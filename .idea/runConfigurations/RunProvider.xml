@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="RunProvider" type="#com.sylvanaar.idea.Lua.run.LuaConfigurationType" factoryName="Lua Script">
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="INTERPRETER_PATH" value="$USER_HOME$/torch/install/bin/qlua" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <option name="PARENT_ENVS" value="true" />
+    <option name="ALTERNATE_INTERPRETER" value="true" />
+    <envs />
+    <module name="" />
+    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/provider_new.lua" />
+    <option name="PARAMETERS" value="" />
+    <method />
+  </configuration>
+</component>

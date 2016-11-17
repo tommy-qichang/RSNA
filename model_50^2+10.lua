@@ -20,43 +20,42 @@ end
 
 local MaxPooling = nn.VolumetricMaxPooling
 
---input: Bx1x50x50x10
+--input: Bx1x10x50x50
 ConvBNReLU(1,64):add(nn.Dropout(0.3));
 ConvBNReLU(64,64);
--- Bx64x50x50x10
+-- Bx64x10x50x50
 vgg:add(MaxPooling(2, 2, 2, 2, 2, 2):ceil());
 
--- Bx64x25x25x5
+-- Bx64x5x25x25
 ConvBNReLU(64, 128):add(nn.Dropout(0.4))
 ConvBNReLU(128, 128)
 vgg:add(MaxPooling(2, 2, 2, 2, 2, 2):ceil())
 
--- Bx128x13x13x3
+-- Bx128x3x13x13
 ConvBNReLU(128, 256):add(nn.Dropout(0.4))
 ConvBNReLU(256, 256):add(nn.Dropout(0.4))
 ConvBNReLU(256, 256)
 vgg:add(MaxPooling(2, 2, 2, 2, 2, 2):ceil())
 
--- Bx256x7x7x2
+-- Bx256x2x7x7
 ConvBNReLU(256, 512):add(nn.Dropout(0.4))
 ConvBNReLU(512, 512):add(nn.Dropout(0.4))
 ConvBNReLU(512, 512)
 vgg:add(MaxPooling(2, 2, 2, 2, 2, 2):ceil())
 
--- Bx512x4x4x1
+-- Bx512x1x4x4
 ConvBNReLU(512, 512):add(nn.Dropout(0.4))
 ConvBNReLU(512, 512):add(nn.Dropout(0.4))
 ConvBNReLU(512, 512)
-vgg:add(MaxPooling(2, 1, 2, 2, 1, 2):ceil())
--- Bx512x2x2x1
+vgg:add(MaxPooling(1, 2, 2, 1, 2, 2):ceil())
+-- Bx512x1x2x2
 
 
--- Bx512x2x2x1
 ConvBNReLU(512, 512):add(nn.Dropout(0.4))
 ConvBNReLU(512, 512):add(nn.Dropout(0.4))
 ConvBNReLU(512, 512)
-vgg:add(MaxPooling(2, 1, 2, 2, 1, 2):ceil())
-
+vgg:add(MaxPooling(1, 2, 2, 1, 2, 2):ceil())
+-- Bx512x1x1x1
 vgg:add(nn.View(512))
 
 classifier = nn.Sequential()
@@ -87,6 +86,6 @@ vgg:add(classifier)
 
 -- check that we can propagate forward without errors
 -- should get 16x2 tensor
---print(vgg:cuda():forward(torch.CudaTensor(16,1,50,50,10)))
+--print(vgg:cuda():forward(torch.CudaTensor(16,1,10,50,50)))
 
 return vgg

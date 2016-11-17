@@ -110,6 +110,8 @@ end
 function Provider:update()
     print('####> begin upate operation...');
 
+    collectgarbage();
+
     local origPositiveTrainSize = self.dataset.allTrPosData:size(1);
     local origTrainSize = origPositiveTrainSize*2;
 

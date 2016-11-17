@@ -21,7 +21,7 @@ opt = lapp [[
    --weightDecay              (default 0.0005)      weightDecay
    -m,--momentum              (default 0.09)         momentum
    --epoch_step               (default 25)          epoch step
-   --model                    (default train_50^2+10)     model name
+   --model                    (default model_50^2+10)     model name
    --max_epoch                (default 300)           maximum number of iterations
    --backend                  (default nn)            backend
    -i,--log_interval          (default 5)           show log interval
@@ -156,7 +156,6 @@ function train()
             local df = criterion:backward(outputs, targets)
             model:backward(inputs, df)
 
-
             confusion:batchAdd(outputs, targets);
 
 
@@ -249,11 +248,11 @@ function test()
     end
 
     -- save model every 5 epochs
-    if epoch % 5 == 0 then
+--    if epoch % 5 == 0 then
         local filename = paths.concat(opt.save, 'model_'..epoch..'.net')
         print('==> saving model to ' .. filename)
         torch.save(filename, model:get(3):clearState())
-    end
+--    end
 
     confusion:zero()
 end
@@ -261,6 +260,9 @@ end
 
 for i = 1, opt.max_epoch do
     train()
-    test()
+    if epoch % 5 == 0 then
+        test()
+    end
+
 end
 

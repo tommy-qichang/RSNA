@@ -2,7 +2,8 @@ function storeScansAllInOne()
     clear ; close all; clc
     imageRootPath = 'images';
     annotationPath = 'annotations';
-    savePrefix='1108';
+    savePrefix='1111_prepadding';
+    beforePadding = 12;
 
     trainList = importdata('trainList.data','\n',1000);
     testList = importdata('testList.data','\n',1000);
@@ -13,25 +14,25 @@ function storeScansAllInOne()
     teLabelPath = strcat('results/all_testlabel_' , savePrefix);
 
     
-    trainData = storeAllImage(trainList);
+    trainData = storeAllImage(trainList,beforePadding);
     save(strcat(trDataPath,'.mat'),'trainData','-v7.3');
     fprintf('successfully save:%s \n',trDataPath);
     
-    testData = storeAllImage(testList);
+    testData = storeAllImage(testList,beforePadding);
     save(strcat(teDataPath,'.mat'),'testData','-v7.3');
     fprintf('successfully saved:%s \n',teDataPath);
     
-    trLabel = storeAllSegmenttion(trainList);
+    trLabel = storeAllSegmenttion(trainList,beforePadding);
     save(strcat(trLabelPath,'.mat'),'trLabel','-v7.3');
     fprintf('seg successfully saved:%s \n',trLabelPath);
     
-    teLabel = storeAllSegmenttion(testList);
+    teLabel = storeAllSegmenttion(testList,beforePadding);
     save(strcat(teLabelPath,'.mat'),'teLabel','-v7.3');
     fprintf('seg successfully saved:%s \n',teLabelPath);
     
     
     
-    function[scanData] = storeAllImage(list)
+    function[scanData] = storeAllImage(list,padding)
         
     % max image number:56
 %      maxv = 0;
@@ -42,16 +43,17 @@ function storeScansAllInOne()
 %             end
 
         scanNumber = size(list,1);
-        scanData = uint8(zeros(scanNumber,56,512,512));
+        scanData = uint8(zeros(scanNumber,(56+padding*2),512,512));
         for i=1:scanNumber
             scanId = list(i);
             scanPath = strcat(imageRootPath,'/',scanId(1),'/imgs/*.jpeg');
             images = dir(char(scanPath));
             fprintf('start load image:%s \n',char(scanId));
-            for j=1:size(images,1)
+            scanNum = size(images,1);
+            for j=1:(scanNum-3)
                 imageId = images(j).name;
                 imagePath = strcat(imageRootPath,'/',scanId(1),'/imgs/',imageId);
-                scanData(i,j,:,:) = imread(char(imagePath));
+                scanData(i,(padding+j),:,:) = imread(char(imagePath));
                 
             end
             
@@ -61,23 +63,24 @@ function storeScansAllInOne()
 
     end
 
-    function[scanData]= storeAllSegmenttion(list)
+    function[scanData]= storeAllSegmenttion(list,padding)
         
         scanNumber = size(list,1);
-        scanData = uint8(zeros(scanNumber,56,512,512));
+        scanData = uint8(zeros(scanNumber,(56+padding*2),512,512));
         for i=1:scanNumber
             scanId = list(i);
             scanPath = strcat(annotationPath,'/',scanId(1),'/*.png');
             images = dir(char(scanPath));
             fprintf('start load segmentation:%s \n',char(scanId));
-            for j=1:size(images,1)
+            scanNum = size(images,1);
+            for j=1:scanNum
                 imageId = images(j).name;
                 imagePath = strcat(annotationPath,'/',scanId(1),'/',imageId);
                 
                 segMap = segBitmap(char(imagePath));
                 
                 currendId = str2double(imageId(end-6:end-4));
-                scanData(i,currendId,:,:) = segMap;
+                scanData(i,(padding+currendId),:,:) = segMap;
                 
             end
             

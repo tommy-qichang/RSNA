@@ -249,11 +249,11 @@ function test()
     end
 
     -- save model every 5 epochs
-    if epoch % 5 == 0 then
+--    if epoch % 5 == 0 then
         local filename = paths.concat(opt.save, 'model_'..epoch..'.net')
         print('==> saving model to ' .. filename)
         torch.save(filename, model:get(3):clearState())
-    end
+--    end
 
     confusion:zero()
 end
@@ -261,6 +261,8 @@ end
 
 for i = 1, opt.max_epoch do
     train()
-    test()
+    if epoch % 5 == 0 then
+        test()
+    end
 end
 

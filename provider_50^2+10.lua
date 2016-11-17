@@ -68,8 +68,8 @@ function Provider:load()
 
     print ('==> finish load train data, combine it...');
 
-    self.dataset.allTrNegData = partTrNegData.allCropImagesNeg:permute(4,3,2,1);
-    self.dataset.allTrPosData = partTrPosData.allCropImagesPos:permute(4,3,2,1);
+    self.dataset.allTrNegData = partTrNegData.trAllNegData:permute(4,3,2,1);
+    self.dataset.allTrPosData = partTrPosData.trAllPosData:permute(4,3,2,1);
     local trNegSize = self.dataset.allTrNegData:size();
     local trPosSize = self.dataset.allTrPosData:size();
     self.dataset.allTrNegData = self.dataset.allTrNegData:reshape(trNegSize[1],1,trNegSize[2],trNegSize[3],trNegSize[4]);
@@ -90,8 +90,8 @@ function Provider:load()
 
 
     print ('==> finish load test data, combine it...');
-    self.dataset.allTePosData = partTePosData.allCropImagesPos:permute(4,3,2,1);
-    self.dataset.allTeNegData = partTeNegData.allCropImagesNeg:permute(4,3,2,1);
+    self.dataset.allTePosData = partTePosData.teAllPosData:permute(4,3,2,1);
+    self.dataset.allTeNegData = partTeNegData.teAllNegData:permute(4,3,2,1);
 
     local teNegSize = self.dataset.allTeNegData:size();
     local tePosSize = self.dataset.allTePosData:size();
@@ -109,6 +109,8 @@ end
 
 function Provider:update()
     print('####> begin upate operation...');
+
+    collectgarbage();
 
     local origPositiveTrainSize = self.dataset.allTrPosData:size(1);
     local origTrainSize = origPositiveTrainSize*2;
