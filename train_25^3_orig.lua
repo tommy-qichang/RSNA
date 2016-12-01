@@ -15,8 +15,8 @@ local c = require 'trepl.colorize'
 
 opt = lapp [[
    -s,--save                  (default "training/25^3")      subdirectory to save logs
-   -b,--batchSize             (default 45)          batch size
-   -r,--learningRate          (default 0.05mo)        learning rate
+   -b,--batchSize             (default 128)          batch size
+   -r,--learningRate          (default 1)        learning rate
    --learningRateDecay        (default 1e-7)      learning rate decay
    --weightDecay              (default 0.0005)      weightDecay
    -m,--momentum              (default 0.9)         momentum
@@ -46,17 +46,18 @@ function BatchFlip:__init()
 end
 
 function BatchFlip:updateOutput(input)
-    if self.train then
-        local bs = input:size(1)
-        local flip_mask = torch.randperm(bs):le(bs / 2)
-        for i = 1, input:size(1) do
-            if flip_mask[i] == 1 then
-                input[i] =image.flip(input[i],4);
-            end
-        end
-    end
-    self.output:float():set(input);
-    return self.output
+--    if self.train then
+--        local bs = input:size(1)
+--        local flip_mask = torch.randperm(bs):le(bs / 2)
+--        for i = 1, input:size(1) do
+--            if flip_mask[i] == 1 then
+--                input[i] =image.flip(input[i],4);
+--            end
+--        end
+--    end
+--    self.output:float():set(input);
+--    return self.output
+    return input
 end
 end
 
@@ -96,7 +97,7 @@ print(model);
 parameters, gradParameters = model:getParameters()
 
 ------------------------------------ save log----------------------------------------
-print('Will save at ' , opt.save)
+print('Will save at ' .. opt.save)
 paths.mkdir(opt.save)
 testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
 testLogger:setNames { 'train 1st acc ', 'train 2ed acc' , 'test 1st acc', 'test 2ed acc'}
@@ -104,7 +105,7 @@ testLogger.showPlot = false
 
 ------------------------------------ set criterion---------------------------------------
 print(c.blue '==>' .. ' setting criterion')
-criterion = nn.CrossEntropyCriterion(torch.Tensor{1,opt.balanceWeight}):cuda()
+criterion = nn.CrossEntropyCriterion():cuda()
 
 confusion = optim.ConfusionMatrix(2);
 ------------------------------------ optimizer config-------------------------------------

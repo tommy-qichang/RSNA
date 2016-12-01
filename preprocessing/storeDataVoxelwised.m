@@ -1,13 +1,13 @@
 function storeDataVoxelwised()
     clear ; close all; clc
-    savePrefix='1111_prepadding';
-    outputPrefix = '50^2+10';
-    cropSizeX = 50;
-    cropSizeY = 50;
-    cropSizeZ = 10; 
-%     cropSizeX = 25;
-%     cropSizeY = 25;
-%     cropSizeZ = 25; 
+    savePrefix='1123_60_5';
+    outputPrefix = '1123_60_5';
+%     cropSizeX = 50;
+%     cropSizeY = 50;
+%     cropSizeZ = 10; 
+    cropSizeX = 60;
+    cropSizeY = 60;
+    cropSizeZ = 5; 
     strideX = 10;
     strideY = 10;
     strideZ = 1;
@@ -28,8 +28,8 @@ function storeDataVoxelwised()
     trLabel = trLabel.trLabel;
     fprintf('finish loading train data and label...\n');
     
-    trData = trData(:,8:end-8,:,:);
-    trLabel = trLabel(:,8:end-8,:,:);
+%     trData = trData(:,8:end-8,:,:);
+%     trLabel = trLabel(:,8:end-8,:,:);
     
     
     tranverseAllImages(trData,trLabel,'train');
@@ -53,6 +53,7 @@ function storeDataVoxelwised()
     function tranverseAllImages(imgData,labelData,dataPrefix)
         allCropImagesPos = uint8(zeros(0,cropSizeZ,cropSizeY,cropSizeX));
         allCropImagesNeg = uint8(zeros(0,cropSizeZ,cropSizeY,cropSizeX));
+
         for i=1:size(imgData,1)
             dcm = squeeze(imgData(i,:,:,:));
             seg = squeeze(labelData(i,:,:,:));
@@ -65,7 +66,7 @@ function storeDataVoxelwised()
             maxStep = maxStepsZ*maxStepsY*maxStepsX;
             cropImagesPos = uint8(zeros(maxStep,cropSizeZ,cropSizeY,cropSizeX));
             cropImagesNeg = uint8(zeros(maxStep,cropSizeZ,cropSizeY,cropSizeX));
-            
+
             posIdx = 1;
             negIdx = 1;
             for stepZ=1:maxStepsZ
@@ -91,12 +92,17 @@ function storeDataVoxelwised()
                         voxelSeg = seg(zStart:zEnd,...
                             max(yStart-negativeMarginSize,1):min(yEnd+negativeMarginSize,512),...
                             max(xStart-negativeMarginSize,1):min(xEnd+negativeMarginSize,512));
-                        if(sum(abs(voxelImage(:)))>0 && sum(abs(voxelSeg(:)))>0)
-                            
+%                         if(sum(abs(voxelImage(:)))>0 && sum(abs(voxelSeg(:)))>0)
+                        if(dcm(zMiddle,yMiddle,xMiddle)>0)
                             % if voxelImage is not black then add it to repos.
                             % todo: if we need round the seg?
-                            isStroke = seg(zMiddle,yMiddle,xMiddle);
-                            if(isStroke==2)
+                            % isStroke = seg(zMiddle,yMiddle,xMiddle);
+                            % if the stroke in voxel area, then set as
+                            % positive.
+                            isStroke = seg(zMiddle,yStart:yEnd,xStart:xEnd);
+                            isStroke = sum(isStroke(:));
+                            
+                            if(isStroke>=2)
                                 fprintf('******find STROKE at: z:%d,y:%d,x:%d*****\n',zMiddle,yMiddle,xMiddle);
                                 cropImagesPos(posIdx,:,:,:) = reshape(voxelImage,1,cropSizeZ,cropSizeY,cropSizeX);
                                 posIdx = posIdx+1;
@@ -172,26 +178,27 @@ function storeDataVoxelwised()
             fprintf('===finish scan id: %d, increasePos:%d, increaseNeg:%d ...===\n'...
                 ,i,size(cropImagesPos,1),size(cropImagesNeg,1));
             
+            
             allCropImagesPos = [allCropImagesPos;cropImagesPos];
             allCropImagesNeg = [allCropImagesNeg;cropImagesNeg];
             
                 
-%             if(rem(i,25)==0 || i==size(imgData,1))
-%                 saveIdx = ceil(i/25);
-%                 save(strcat('results/patch_',dataPrefix,'_pos_',num2str(saveIdx),'_',outputPrefix,'.mat'),'allCropImagesPos','-v7.3');
-%                 save(strcat('results/patch_',dataPrefix,'_neg_',num2str(saveIdx),'_',outputPrefix,'.mat'),'allCropImagesNeg','-v7.3');
-%                 fprintf('save result for save index: %d \n',saveIdx);
-%                 
-%                 allCropImagesPos = uint8(zeros(0,cropSizeZ,cropSizeY,cropSizeX));
-%                 allCropImagesNeg = uint8(zeros(0,cropSizeZ,cropSizeY,cropSizeX));
-%             end
+            if(rem(i,50)==0 || i==size(imgData,1))
+                saveIdx = ceil(i/50);
+                save(strcat('results/patch_',dataPrefix,'_pos_',num2str(saveIdx),'_',outputPrefix,'.mat'),'allCropImagesPos','-v7.3');
+                save(strcat('results/patch_',dataPrefix,'_neg_',num2str(saveIdx),'_',outputPrefix,'.mat'),'allCropImagesNeg','-v7.3');
+                fprintf('save result for save index: %d \n',saveIdx);
+                
+                allCropImagesPos = uint8(zeros(0,cropSizeZ,cropSizeY,cropSizeX));
+                allCropImagesNeg = uint8(zeros(0,cropSizeZ,cropSizeY,cropSizeX));
+            end
             
         end
         
-        save(strcat('results/patch_',dataPrefix,'_pos_',outputPrefix,'.mat'),'allCropImagesPos','-v7.3');
-        save(strcat('results/patch_',dataPrefix,'_neg_',outputPrefix,'.mat'),'allCropImagesNeg','-v7.3');
-        fprintf('save result for save  \n');
-        
+%         save(strcat('results/patch_',dataPrefix,'_pos_',outputPrefix,'.mat'),'allCropImagesPos','-v7.3');
+%         save(strcat('results/patch_',dataPrefix,'_neg_',outputPrefix,'.mat'),'allCropImagesNeg','-v7.3');
+%         fprintf('*****save result for save **** \n');
+%         
         
     end
 

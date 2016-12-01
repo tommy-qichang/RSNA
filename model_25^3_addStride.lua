@@ -7,6 +7,7 @@
 --
 require 'nn'
 require 'cunn'
+require './util'
 
 vgg = nn.Sequential();
 
@@ -18,30 +19,45 @@ local function ConvBNReLU(nInputPlane, nOutputPlane)
     return vgg
 end
 
-local MaxPooling = nn.VolumetricMaxPooling
+local function ConvBNReLUStride2(convNet,nInputPlane, nOutputPlane)
+    convNet:add(nn.VolumetricConvolution(nInputPlane, nOutputPlane, 5, 5, 5, 1, 1, 1, 1, 1, 1))
+    convNet:add(nn.VolumetricBatchNormalization(nOutputPlane, 1e-3))
+    convNet:add(nn.ReLU(true))
+    return convNet
+end
 
---input: Bx1x25x25x25
-ConvBNReLU(1,64):add(nn.Dropout(0.3));
-ConvBNReLU(64,64);
--- Bx64x25x25x25
+local MaxPooling = nn.VolumetricMaxPooling
+-- Bx1x25x25x25
+ConvBNReLUStride2(vgg,1,64);
+ConvBNReLUStride2(vgg,64,64);
+-- Bx64x23x23x23
+
+--ConvBNReLU(1,64):add(nn.Dropout(0.3));
+--ConvBNReLU(64,64);
+
 vgg:add(MaxPooling(2, 2, 2, 2, 2, 2));
 
--- Bx64x12x12x12
+-- Bx64x11x11x11
 ConvBNReLU(64, 128):add(nn.Dropout(0.4))
 ConvBNReLU(128, 128)
 vgg:add(MaxPooling(2, 2, 2, 2, 2, 2))
 
--- Bx128x6x6x6
+-- Bx128x5x5x5
 ConvBNReLU(128, 256):add(nn.Dropout(0.4))
 ConvBNReLU(256, 256):add(nn.Dropout(0.4))
 ConvBNReLU(256, 256)
 vgg:add(MaxPooling(2, 2, 2, 2, 2, 2))
 
--- Bx256x3x3x3
+-- Bx256x2x2x2
 ConvBNReLU(256, 512):add(nn.Dropout(0.4))
 ConvBNReLU(512, 512):add(nn.Dropout(0.4))
 ConvBNReLU(512, 512)
 vgg:add(MaxPooling(2, 2, 2, 2, 2, 2))
+
+
+ConvBNReLU(512, 512):add(nn.Dropout(0.4))
+ConvBNReLU(512, 512):add(nn.Dropout(0.4))
+ConvBNReLU(512, 512)
 
 -- Bx512x1x1x1
 vgg:add(nn.View(512))
@@ -53,6 +69,7 @@ classifier:add(nn.BatchNormalization(512))
 classifier:add(nn.ReLU(true))
 classifier:add(nn.Dropout(0.5))
 classifier:add(nn.Linear(512, 2))
+classifier:add(nn.SoftMax());
 vgg:add(classifier)
 
 
@@ -74,6 +91,9 @@ vgg:add(classifier)
 
 -- check that we can propagate forward without errors
 -- should get 16x2 tensor
---print(vgg:cuda():forward(torch.CudaTensor(16,1,25,25,25)))
+print(vgg:cuda():forward(torch.CudaTensor(16,1,25,25,25)):size())
+
+getMemStats();
+collectgarbage();
 
 return vgg

@@ -85,7 +85,7 @@ fcnn:add(decode);
 
 
 --require('mobdebug').start(nill,8222)
---print(fcnn:cuda():forward(torch.CudaTensor(8,1,25,25)):size())
+print(fcnn:cuda():forward(torch.CudaTensor(3,1,256,256)):size())
 
 
 return fcnn

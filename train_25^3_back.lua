@@ -16,10 +16,10 @@ local c = require 'trepl.colorize'
 opt = lapp [[
    -s,--save                  (default "training/25^3")      subdirectory to save logs
    -b,--batchSize             (default 45)          batch size
-   -r,--learningRate          (default 0.05mo)        learning rate
+   -r,--learningRate          (default 0.1)        learning rate
    --learningRateDecay        (default 1e-7)      learning rate decay
    --weightDecay              (default 0.0005)      weightDecay
-   -m,--momentum              (default 0.9)         momentum
+   -m,--momentum              (default 0.09)         momentum
    --epoch_step               (default 25)          epoch step
    --model                    (default train_25^3)     model name
    --max_epoch                (default 300)           maximum number of iterations
@@ -96,7 +96,7 @@ print(model);
 parameters, gradParameters = model:getParameters()
 
 ------------------------------------ save log----------------------------------------
-print('Will save at ' , opt.save)
+print('Will save at ' .. opt.save)
 paths.mkdir(opt.save)
 testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
 testLogger:setNames { 'train 1st acc ', 'train 2ed acc' , 'test 1st acc', 'test 2ed acc'}

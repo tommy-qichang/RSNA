@@ -8,7 +8,7 @@
 require 'nn'
 require 'cunn'
 
-vgg = nn.Sequential();
+local vgg = nn.Sequential();
 
 -- building block
 local function ConvBNReLU(nInputPlane, nOutputPlane)
@@ -20,40 +20,53 @@ end
 
 local MaxPooling = nn.VolumetricMaxPooling
 
---input: Bx1x25x25x25
+--input: Bx1x5x60x60
 ConvBNReLU(1,64):add(nn.Dropout(0.3));
 ConvBNReLU(64,64);
--- Bx64x25x25x25
+-- Bx64x5x60x60
 vgg:add(MaxPooling(2, 2, 2, 2, 2, 2));
 
--- Bx64x12x12x12
+-- Bx64x2x30x30
 ConvBNReLU(64, 128):add(nn.Dropout(0.4))
 ConvBNReLU(128, 128)
 vgg:add(MaxPooling(2, 2, 2, 2, 2, 2))
 
--- Bx128x6x6x6
+-- Bx128x1x15x15
 ConvBNReLU(128, 256):add(nn.Dropout(0.4))
 ConvBNReLU(256, 256):add(nn.Dropout(0.4))
 ConvBNReLU(256, 256)
-vgg:add(MaxPooling(2, 2, 2, 2, 2, 2))
+vgg:add(MaxPooling(1, 2, 2, 1, 2, 2))
 
--- Bx256x3x3x3
+-- Bx256x1x7x7
 ConvBNReLU(256, 512):add(nn.Dropout(0.4))
 ConvBNReLU(512, 512):add(nn.Dropout(0.4))
 ConvBNReLU(512, 512)
-vgg:add(MaxPooling(2, 2, 2, 2, 2, 2))
+vgg:add(MaxPooling(1, 2, 2, 1, 2, 2))
+
+-- Bx512x1x3x3
+ConvBNReLU(512, 512):add(nn.Dropout(0.4))
+ConvBNReLU(512, 512):add(nn.Dropout(0.4))
+ConvBNReLU(512, 512)
+vgg:add(MaxPooling(1, 2, 2, 1, 2, 2))
+
+--local nGPU = cutorch.getDeviceCount()
+--vgg:cuda()
+--vgg = makeDataParallel(vgg, nGPU)
 
 -- Bx512x1x1x1
-vgg:add(nn.View(512))
 
-classifier = nn.Sequential()
+local classifier = nn.Sequential()
+classifier:add(nn.View(512));
 classifier:add(nn.Dropout(0.5))
 classifier:add(nn.Linear(512, 512))
 classifier:add(nn.BatchNormalization(512))
 classifier:add(nn.ReLU(true))
 classifier:add(nn.Dropout(0.5))
 classifier:add(nn.Linear(512, 2))
-vgg:add(classifier)
+
+
+local coreModel = nn.Sequential()
+coreModel:add(vgg):add(classifier)
 
 
 -- initialization from MSR
@@ -74,6 +87,7 @@ vgg:add(classifier)
 
 -- check that we can propagate forward without errors
 -- should get 16x2 tensor
---print(vgg:cuda():forward(torch.CudaTensor(16,1,25,25,25)))
+--print(vgg:cuda():forward(torch.CudaTensor(16,1,5,60,60)):size())
+--print(vgg:cuda():forward(torch.CudaTensor(1,1,16,256,256)):size())
 
-return vgg
+return coreModel

@@ -2,8 +2,8 @@ function storeScansAllInOne()
     clear ; close all; clc
     imageRootPath = 'images';
     annotationPath = 'annotations';
-    savePrefix='1111_prepadding';
-    beforePadding = 12;
+    savePrefix='1127_fcnn';
+    beforePadding = 0;
 
     trainList = importdata('trainList.data','\n',1000);
     testList = importdata('testList.data','\n',1000);
@@ -33,15 +33,6 @@ function storeScansAllInOne()
     
     
     function[scanData] = storeAllImage(list,padding)
-        
-    % max image number:56
-%      maxv = 0;
-%             if maxv <= size(images,1)
-%                 maxv = size(images,1);
-% 
-%                 fprintf('max image number:%d %s \n',maxv,char(scanId(1)));
-%             end
-
         scanNumber = size(list,1);
         scanData = uint8(zeros(scanNumber,(56+padding*2),512,512));
         for i=1:scanNumber
@@ -53,13 +44,19 @@ function storeScansAllInOne()
             for j=1:(scanNum-3)
                 imageId = images(j).name;
                 imagePath = strcat(imageRootPath,'/',scanId(1),'/imgs/',imageId);
-                scanData(i,(padding+j),:,:) = imread(char(imagePath));
+                scanImg = imread(char(imagePath));
+                if ndims(scanImg)~=2
+                    scanImg = scanImg(:,:,2);
+                end
+                scanData(i,(padding+j),:,:) = scanImg;
                 
             end
             
             
         end
         
+        scanData(scanData>=245) =0;
+       
 
     end
 

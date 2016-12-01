@@ -9,24 +9,26 @@ require 'optim'
 require 'cunn'
 require 'image';
 require 'xlua';
-dofile './provider_25^3.lua'
+require './util'
+dofile './provider_60^2+5.lua'
 local class = require 'class'
 local c = require 'trepl.colorize'
 
 opt = lapp [[
-   -s,--save                  (default "training/25^3")      subdirectory to save logs
+   -s,--save                  (default "training/60^2+5")      subdirectory to save logs
    -b,--batchSize             (default 45)          batch size
-   -r,--learningRate          (default 0.05mo)        learning rate
+   -r,--learningRate          (default 0.001)        learning rate
    --learningRateDecay        (default 1e-7)      learning rate decay
    --weightDecay              (default 0.0005)      weightDecay
-   -m,--momentum              (default 0.9)         momentum
+   -m,--momentum              (default 0.009)         momentum
    --epoch_step               (default 25)          epoch step
-   --model                    (default train_25^3)     model name
+   --model                    (default model_60^2+5)     model name
    --max_epoch                (default 300)           maximum number of iterations
    --backend                  (default nn)            backend
    -i,--log_interval          (default 5)           show log interval
    --modelPath                (default training/model.net) exist model
-   --balanceWeight              (default 1)     criterion balance weight
+   --balanceWeight                (default 1) exist model
+   --GPU                        (default 1) default GPU id
 ]]
 
 print(opt)
@@ -39,19 +41,23 @@ provider.dataset.testData.data = provider.dataset.testData.data:float()
 
 do -- data augmentation module
 local BatchFlip, parent = torch.class('nn.BatchFlip', 'nn.Module')
-
 function BatchFlip:__init()
     parent.__init(self)
     self.train = true
 end
-
 function BatchFlip:updateOutput(input)
     if self.train then
         local bs = input:size(1)
         local flip_mask = torch.randperm(bs):le(bs / 2)
+        local flip_mask2 = torch.randperm(bs):le(bs / 2)
         for i = 1, input:size(1) do
             if flip_mask[i] == 1 then
                 input[i] =image.flip(input[i],4);
+            end
+        end
+        for i = 1, input:size(1) do
+            if flip_mask2[i] == 1 then
+                input[i] =image.flip(input[i],3);
             end
         end
     end
@@ -96,7 +102,7 @@ print(model);
 parameters, gradParameters = model:getParameters()
 
 ------------------------------------ save log----------------------------------------
-print('Will save at ' , opt.save)
+print('Will save at ' .. opt.save)
 paths.mkdir(opt.save)
 testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
 testLogger:setNames { 'train 1st acc ', 'train 2ed acc' , 'test 1st acc', 'test 2ed acc'}
@@ -150,12 +156,12 @@ function train()
             if x ~= parameters then parameters:copy(x) end
 
             gradParameters:zero();
+
             local outputs = model:forward(inputs:float())
             local f = criterion:forward(outputs, targets)
 
             local df = criterion:backward(outputs, targets)
             model:backward(inputs, df)
-
 
             confusion:batchAdd(outputs, targets);
 
@@ -164,6 +170,9 @@ function train()
         end
 
         local x, fx = optim.sgd(feval, parameters, optimState);
+
+--        model:findModules('nn.DataParallelTable')[1]:syncParameters()
+
 
 
         local innerToc = torch.toc(innerTic);
@@ -184,7 +193,7 @@ function train()
 
     confusion:updateValids();
     print(c.red('Train accuracy: ' .. c.cyan '%.2f' .. ' %%\t time: %.2f s'):format(confusion.totalValid * 100, torch.toc(tic)));
-    print(confusion);
+    print(confusion)
 
     train_acc = confusion.totalValid * 100
 
@@ -264,9 +273,9 @@ end
 
 for i = 1, opt.max_epoch do
     train()
-    test()
---    if epoch %  == 0 then
---        test()
---    end
+    if epoch % 2 == 0 then
+        test()
+    end
+
 end
 
