@@ -4,41 +4,38 @@ cropSizeX = 25;
 cropSizeY = 25;
 cropSizeZ = 25;
 
-strideX = 10;
-strideY = 10;
+strideX = 1;
+strideY = 1;
 strideZ = 1;
 
-
-testimgPath = 'results/all_testimg_1111_prepadding.mat';
+sourceImgId = 'all_testimg_1127_fcnn';
+sourceLabelId = 'all_testlabel_1127_fcnn';
+testimgPath = strcat('results/',sourceImgId,'.mat');
 testData = load(testimgPath);
 testData = testData.testData;
-testlabelPath = 'results/all_testlabel_1111_prepadding.mat';
+testlabelPath = strcat('results/',sourceLabelId,'.mat');
 testLabel = load(testlabelPath);
 testLabel = testLabel.teLabel;
 
-testData1 = squeeze(testData(5,:,:,:));
-testLabel1 = squeeze(testLabel(5,:,:,:));
+testData1 = squeeze(testData(9,:,:,:,:));
+testLabel1 = squeeze(testLabel(9,:,:,:,:));
 
 
 [imgZ,imgY,imgX] = size(testData1);
             
 maxStepsX = floor((imgX-cropSizeX)/strideX)+1;
 maxStepsY = floor((imgY-cropSizeY)/strideY)+1;
-maxStepsZ = floor((imgZ-cropSizeZ)/strideZ)+1;
 
-maxStep = maxStepsZ*maxStepsY*maxStepsX;
+% 488*488  98*98=9604
+maxStep = maxStepsY*maxStepsX;
 
-cropImagesPos = uint8(zeros(maxStep,cropSizeZ,cropSizeY,cropSizeX));
-cropImagesNeg = uint8(zeros(maxStep,cropSizeZ,cropSizeY,cropSizeX));
+cropImages = uint8(zeros(maxStep,cropSizeZ,cropSizeY,cropSizeX));
 
 
-posIdx = 1;
-negIdx = 1;
-for stepZ=1:maxStepsZ
-
-    zStart = (stepZ-1)*strideZ+1;
-    zEnd = (stepZ-1)*strideZ+cropSizeZ;
-    zMiddle = floor((zStart+zEnd)/2);
+Idx = 1;
+    zMiddle = 17;
+    zStart = zMiddle-12;
+    zEnd = zMiddle+12;
             
     for stepY=1:maxStepsY
         for stepX=1:maxStepsX
@@ -51,37 +48,31 @@ for stepZ=1:maxStepsZ
 
             voxelImage = testData1(zStart:zEnd,yStart:yEnd,xStart:xEnd);
             voxelSeg = testLabel1(zStart:zEnd,...
-                max(yStart,1):min(yEnd,512),...
-                max(xStart,1):min(xEnd,512));
-            if(sum(abs(voxelImage(:)))>0 )
+            max(yStart,1):min(yEnd,512),...
+            max(xStart,1):min(xEnd,512));
 
-                % if voxelImage is not black then add it to repos.
-                % todo: if we need round the seg?
-                isStroke = testLabel1(zMiddle,yMiddle,xMiddle);
-                if(isStroke==2)
-                    fprintf('******find STROKE at: z:%d,y:%d,x:%d*****\n',zMiddle,yMiddle,xMiddle);
-                    cropImagesPos(posIdx,:,:,:) = reshape(voxelImage,1,cropSizeZ,cropSizeY,cropSizeX);
-                    posIdx = posIdx+1;
-                    
-                else
-                    cropImagesNeg(negIdx,:,:,:) = reshape(voxelImage,1,cropSizeZ,cropSizeY,cropSizeX);
-                    negIdx = negIdx+1;
-                end
+            % if voxelImage is not black then add it to repos.
+            % todo: if we need round the seg?
+            isStroke = testLabel1(zMiddle,yMiddle,xMiddle);
+            if(isStroke>0)
+                fprintf('******find STROKE at: z:%d,y:%d,x:%d*****\n',zMiddle,yMiddle,xMiddle);
+                cropImages(Idx,:,:,:) = reshape(voxelImage,1,cropSizeZ,cropSizeY,cropSizeX);
+                Idx = Idx+1;
+
+            else
+                cropImages(Idx,:,:,:) = reshape(voxelImage,1,cropSizeZ,cropSizeY,cropSizeX);
+                Idx = Idx+1;
             end
 
         end
         
     end
-    
-end
 
 
-cropImagesPos(posIdx:end,:,:,:) = [];
-cropImagesNeg(negIdx:end,:,:,:) = [];
+cropImages(Idx:end,:,:,:) = [];
 
 
-save('results/test/img5TestDatasetPos.mat','cropImagesPos','-v7.3')
-save('results/test/img5TestDatasetNeg.mat','cropImagesNeg','-v7.3')
+save(strcat('results/test/',sourceImgId,'_rocSourceData.mat'),'cropImages','-v7.3')
 
 
 

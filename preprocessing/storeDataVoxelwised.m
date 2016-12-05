@@ -1,7 +1,7 @@
 function storeDataVoxelwised()
     clear ; close all; clc
-    savePrefix='1123_60_5';
-    outputPrefix = '1123_60_5';
+    savePrefix='1201_25^3';
+    outputPrefix = '1201_25^3';
 %     cropSizeX = 50;
 %     cropSizeY = 50;
 %     cropSizeZ = 10; 
@@ -99,10 +99,9 @@ function storeDataVoxelwised()
                             % isStroke = seg(zMiddle,yMiddle,xMiddle);
                             % if the stroke in voxel area, then set as
                             % positive.
-                            isStroke = seg(zMiddle,yStart:yEnd,xStart:xEnd);
-                            isStroke = sum(isStroke(:));
+                            isStroke = seg(zMiddle,yMiddle,xMiddle);
                             
-                            if(isStroke>=2)
+                            if(isStroke>0)
                                 fprintf('******find STROKE at: z:%d,y:%d,x:%d*****\n',zMiddle,yMiddle,xMiddle);
                                 cropImagesPos(posIdx,:,:,:) = reshape(voxelImage,1,cropSizeZ,cropSizeY,cropSizeX);
                                 posIdx = posIdx+1;
@@ -198,7 +197,7 @@ function storeDataVoxelwised()
 %         save(strcat('results/patch_',dataPrefix,'_pos_',outputPrefix,'.mat'),'allCropImagesPos','-v7.3');
 %         save(strcat('results/patch_',dataPrefix,'_neg_',outputPrefix,'.mat'),'allCropImagesNeg','-v7.3');
 %         fprintf('*****save result for save **** \n');
-%         
+        
         
     end
 

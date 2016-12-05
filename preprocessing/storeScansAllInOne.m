@@ -2,8 +2,8 @@ function storeScansAllInOne()
     clear ; close all; clc
     imageRootPath = 'images';
     annotationPath = 'annotations';
-    savePrefix='1127_fcnn';
-    beforePadding = 0;
+    savePrefix='1201_25^3';
+    beforePadding = 12;
 
     trainList = importdata('trainList.data','\n',1000);
     testList = importdata('testList.data','\n',1000);
@@ -55,8 +55,6 @@ function storeScansAllInOne()
             
         end
         
-        scanData(scanData>=245) =0;
-       
 
     end
 

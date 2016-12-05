@@ -58,7 +58,7 @@ function Provider:load()
         self.dataset = {};
     end
 
-    local stamp = '1127_fcnn';
+    local stamp = '1204_fcnn';
     local trDataPath = 'preprocessing/results/all_img_'..stamp..'.mat';
     local trLabelPath = 'preprocessing/results/all_label_'..stamp..'.mat';
 

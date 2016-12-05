@@ -9,10 +9,8 @@ require 'optim'
 require 'cunn'
 require 'cudnn'
 require 'image';
-require 'mattorch'
-local matio = require 'matio'
 require 'xlua';
-require 'hdf5'
+local matio = require 'matio'
 dofile './provider_25^3_fcnn.lua'
 local class = require 'class'
 local c = require 'trepl.colorize'
@@ -29,10 +27,9 @@ opt = lapp [[
    --max_epoch                (default 300)           maximum number of iterations
    --backend                  (default nn)            backend
    -i,--log_interval          (default 5)           show log interval
-   --modelPath                (default training/model.net) exist model
+   --modelPath                (default training/25^3_i8_r0.005/model_4.net) exist model
    --multiGPU                 (default true)    if it's multiGPU
    --balanceWeight              (default 1)     criterion balance weight
-   --testFolder                 (default img_1)     test folder name
 ]]
 
 print(opt)
@@ -50,8 +47,8 @@ local model = nn.Sequential();
 model:add(nn.Copy('torch.FloatTensor', 'torch.CudaTensor'));
 
 if modelPath and paths.filep(modelPath) then
-    model:add(torch.load(modelPath));
     print('==> load exist model:' .. modelPath);
+    model:add(torch.load(modelPath)):cuda();
 else
     model:add(dofile(opt.model .. '.lua'):cuda());
 end
@@ -110,46 +107,6 @@ optimStatesTable = makeOptimStatesTable(optimState);
 
 cost = {}
 
-
-local function flat3DMatrix(matrix)
-    local dim = matrix:nDimension();
-    local size = matrix:size();
-    local batchSize = 1;
-    for i=1,(dim-2) do
-        batchSize = batchSize*size[i]
-    end
-    return matrix:reshape(batchSize,size[dim-1],size[dim]);
-
-end
-
-local function testOut(inputs,targets,result,type,tidx)
-    --    local targets = provider.dataset.testData.label:narrow(1, i, idxEnd or bs):squeeze(2);
-
-    local predictResult = result:select(2,2):csub(result:select(2,1)):squeeze(2);
-    local predictResult = flat3DMatrix(predictResult):double();
-
-    local predictTarget = flat3DMatrix(targets):double();
-
-    local origInput = flat3DMatrix(inputs):double();
-
-    jLen = predictResult:size(1);
-    paths.mkdir(paths.concat(opt.save,opt.testFolder));
-    predictTarget = predictTarget-1;
-    --        if i==1 then
-    for j = 1,jLen do
-        if predictTarget:select(1,j):max() ~= 0 then
-            local minValue = -math.min(predictResult:select(1,j):min(),0) + 1;
-            image.save(paths.concat(opt.save,opt.testFolder,type..'_'..tidx..'_'..j..'_'..epoch..'_test'..'.png'),image.y2jet(predictResult:select(1,j):add(minValue)));
---            image.save(paths.concat(opt.save,opt.testFolder,type..'_'..tidx..'_'..j..'_'..epoch..'_orig'..'.png'), origInput:select(1,j):squeeze());
-            image.save(paths.concat(opt.save,opt.testFolder,type..'_'..tidx..'_'..j..'_'..epoch..'_label'..'.png'),predictTarget:select(1,j):squeeze());
-
-        end
-        --            matio.save(paths.concat(opt.save,'imgs',((i-1)*bs+j)..'_test'..epoch..'.mat'),results:select(1,j));
-    end
-    --        end
-
-end
-
 function plotCost(avgWidth)
     if not gnuplot then
         require 'gnuplot'
@@ -178,10 +135,8 @@ function train()
     epoch = epoch or 1;
 
     -- drop learning rate every "epoch_step" epochs  ?
-    if epoch % opt.epoch_step == 0 then
-        optimState.learningRate = optimState.learningRate / 2
-        print(c.blue '==>' .. " decrease LR: " ..optimState.learningRate .. ']')
-    end
+    if epoch % opt.epoch_step == 0 then optimState.learningRate = optimState.learningRate / 2 end
+
     -- update negative set every 6 epochs.
 
     print(c.blue '==>' .. " online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
@@ -203,6 +158,7 @@ function train()
 
 
         model:zeroGradParameters();
+--        require('mobdebug').start(nill,8222)
 
         local outputs = model:forward(inputs:float())
         local f = criterion:forward(outputs, targets)
@@ -212,22 +168,15 @@ function train()
 
 
 
---        require('mobdebug').start(nill,8222)
---        --2,2,56,512,512 -> 2*56*512*512 , 2
---        local flatOutput = outputs:permute(2,1,3,4,5);
---        flatOutput = flatOutput:reshape(2,flatOutput:size(1)*
---                flatOutput:size(3)*flatOutput:size(4)*flatOutput:size(5))
---        flatOutput = flatOutput:permute(2,1);
---        local flatTarget = targets:reshape(targets:size(1)*
---                targets:size(2)*targets:size(3)*targets:size(4))
-
-
         for pk,pv in pairs(parameters) do
-            if pk>=0 then
+            if pk>52 then
                 local gradParameter = gradParameters[pk];
+    --            local flattenParameter = v:view(v:nElement());
+    --            local flattenGradParameter = gradParameter:view(gradParameter:nElement());
 
                 cutorch.setDevice(pv:getDevice())
                 local feval = function(x)
+    --                optimState.dfdx = nil;
                     return f,gradParameter;
                 end
                 optim.sgd(feval, pv, optimStatesTable[pk]);
@@ -237,12 +186,6 @@ function train()
         end
 
         cutorch.setDevice(1);
-
-
---        if(epoch % 2 == 0) then
---            testOut(inputs,targets,outputs,'train',t);
---
---        end
 
         table.insert(cost,f)
 
@@ -259,18 +202,18 @@ function train()
 
         if t % opt.log_interval == 0 then
             printInfo();
-        end
-
-
-        if t % 100 == 0 then
             plotCost(opt.batchSize);
         end
 
-
     end
 
+--    confusion:updateValids();
+--    print(c.red('Train accuracy: ' .. c.cyan '%.2f' .. ' %%\t time: %.2f s'):format(confusion.totalValid * 100, torch.toc(tic)));
 
 
+--    train_acc = confusion.totalValid * 100
+
+--    confusion:zero()
     epoch = epoch + 1;
     collectgarbage();
 
@@ -278,8 +221,11 @@ function train()
 end
 
 
+
+
 function test()
 
+    epoch = 'test'
     -- disable flips, dropouts and batch normalization
     model:evaluate()
     collectgarbage();
@@ -288,79 +234,61 @@ function test()
     len = provider.dataset.testData.data:size(1);
     local allTargets = nil;
     local allResults = nil;
+    local allOrigInput = nil;
 
     for i = 1, len, bs do
         xlua.progress(i, len)
+--        require('mobdebug').start(nill,8222)
         if (i + bs) > len then idxEnd = len - i; end
         --        print (('-->testDataSize:%s;i:%s;bs:%s;idxEnd:%s;idxEnd or bs: %s'):format(provider.dataset.testData.data:size(1),i,bs,idxEnd,idxEnd or bs))
---        local outputs = model:forward(provider.dataset.testData.data:narrow(1, i, idxEnd or bs))
         local inputs = provider.dataset.testData.data:narrow(1, i, idxEnd or bs);
         local outputs = model:forward(inputs)
+
 
         collectgarbage();
         local targets = provider.dataset.testData.label:narrow(1, i, idxEnd or bs):squeeze(2);
 
-        testOut(inputs,targets,outputs,'test',1);
-
         local predictResult = outputs:select(2,2):csub(outputs:select(2,1)):squeeze(2);
-        predictResult = flat3DMatrix(predictResult);
-        local predictTarget = flat3DMatrix(targets);
+        predictResult = predictResult:reshape(predictResult:size(1)*predictResult:size(2),
+            predictResult:size(3),predictResult:size(4)):double();
 
-        collectgarbage();
+        local predictTarget = targets:reshape(targets:size(1)*targets:size(2),
+            targets:size(3),targets:size(4)):double();
 
-        if(allResults)then
-            allResults = torch.cat(allResults,predictResult:double(),1);
-            allTargets = torch.cat(allTargets,predictTarget:double(),1);
-        else
-            allResults = predictResult:double();
-            allTargets = predictTarget:double();
+
+        local origInput = inputs:squeeze(2);
+        origInput = origInput:reshape(origInput:size(1)*origInput:size(2),
+            origInput:size(3),origInput:size(4)):double();
+
+        jLen = predictResult:size(1);
+        for j = 1,jLen do
+            --        require('mobdebug').start(nill,8222);
+
+            local minValue = -math.min(fResult:select(1,j):min(),0) + 1;
+            image.save(paths.concat(opt.save,'imgs',(j)..'_test'..epoch..'.png'),image.y2jet(predictResult:select(1,j):add(minValue)));
+            image.save(paths.concat(opt.save,'imgs',(j)..'_orig'..epoch..'.png'), origInput:select(1,j):squeeze());
+            image.save(paths.concat(opt.save,'imgs',(j)..'_label'..epoch..'.png'),predictTarget:select(1,j):squeeze());
+
+
+            --            matio.save(paths.concat(opt.save,'imgs',((i-1)*bs+j)..'_test'..epoch..'.mat'),results:select(1,j));
         end
 
 
+        -------------------save prediction heatmap----------------------
+
     end
-
-    local rocData = {};
-    rocData['oneresult'] = allResults;
-    rocData['onetarget'] = allTargets;
-
---    local resultPath = paths.concat(opt.save,'rocData','fcnn_rocdata_epo_result'..epoch..'.mat');
---    local targetPath = paths.concat(opt.save,'rocData','fcnn_rocdata_epo_target'..epoch..'.mat');
---    print('=====> save roc data:'..resultPath);
-    paths.mkdir(paths.concat(opt.save,'rocData'));
-
 --    matio.save(resultPath,rocData.oneresult);
 --    matio.save(targetPath,rocData.onetarget);
 
---    mattorch.save(resultPath,rocData.oneresult);
---    mattorch.save(targetPath,rocData.onetarget);
 
+--    mattorch.save(result,rocData.oneresult);
+--    mattorch.save(target,rocData.onetarget);
 
-    local resultPath = paths.concat(opt.save,'rocData','fcnn_rocdata_epo_result'..epoch..'.h5');
-    local targetPath = paths.concat(opt.save,'rocData','fcnn_rocdata_epo_target'..epoch..'.h5');
-
-    local myFile = hdf5.open(resultPath, 'w')
-    myFile:write('/result', rocData.oneresult);
-    myFile:write('/target', rocData.onetarget);
-    myFile:close()
-
-
-    rocData = nil;
     collectgarbage();
-    print('=====> finish saving prediction,start saving model...');
-    -- save model every 5 epochs
---    if epoch % 5 == 0 then
-        local filename = paths.concat(opt.save, 'model_'..epoch..'.net')
-        print('==> saving model to ' .. filename)
-        torch.save(filename, model:get(2):clearState())
---    end
+
+
 
     confusion:zero()
 end
 
-for i = 1, opt.max_epoch do
-    train()
-    if epoch % 4 == 3 then
-        test()
-    end
-end
-
+test()

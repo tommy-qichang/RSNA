@@ -2,7 +2,7 @@ function storeScansAllInOne2()
     clear ; close all; clc
     imageRootPath = 'images';
     annotationPath = 'annotations';
-    savePrefix='1127_fcnn';
+    savePrefix='1204_fcnn';
     beforePadding = 0;
 
     trainList = importdata('trainList.data','\n',1000);
@@ -34,7 +34,7 @@ function storeScansAllInOne2()
     
     function[scanData] = storeAllImage(list,padding)
         scanNumber = size(list,1);
-        scanData = uint8(zeros(scanNumber*2, 1,(56+padding*2),512,512));
+        scanData = uint8(zeros(scanNumber*4, 1,(56+padding*2),512,512));
         for i=1:scanNumber
             scanId = list(i);
             scanPath = strcat(imageRootPath,'/',scanId(1),'/imgs/*.jpeg');
@@ -48,10 +48,18 @@ function storeScansAllInOne2()
                 if ndims(scanImg)~=2
                     scanImg = scanImg(:,:,2);
                 end
-                scanData(i*2-1, 1,(padding+j), :, :) = scanImg;
+                scanData((i-1)*4+1, 1,(padding+j), :, :) = scanImg;
                 
                 flipScanImg = fliplr(scanImg);
-                scanData(i*2, 1, (padding+j), :,:) = flipScanImg;
+                scanData((i-1)*4+2, 1, (padding+j), :,:) = flipScanImg;
+                
+                flipScanImg2 = flipud(scanImg);
+                scanData((i-1)*4+3, 1, (padding+j), :,:) = flipScanImg2;
+                
+                flipScanImg3 = flipud(flipScanImg);
+                scanData((i-1)*4+4, 1, (padding+j), :,:) = flipScanImg3;
+                
+                
             end
             
             
@@ -62,7 +70,7 @@ function storeScansAllInOne2()
     function[scanData]= storeAllSegmenttion(list,padding)
         
         scanNumber = size(list,1);
-        scanData = uint8(zeros(scanNumber*2,1, (56+padding*2),512,512));
+        scanData = uint8(zeros(scanNumber*4,1, (56+padding*2),512,512));
         for i=1:scanNumber
             scanId = list(i);
             scanPath = strcat(annotationPath,'/',scanId(1),'/*.png');
@@ -78,11 +86,17 @@ function storeScansAllInOne2()
                 segMap(segMap>=1)=1;
                 
                 currendId = str2double(imageId(end-6:end-4));
-                scanData(i*2-1,1, (padding+currendId),:,:) = segMap;
+                scanData((i-1)*4+1,1, (padding+currendId),:,:) = segMap;
                 
                 
                 flipSegMap = fliplr(segMap);
-                scanData(i*2, 1,(padding+currendId), :,:) = flipSegMap;
+                scanData((i-1)*4+2, 1,(padding+currendId), :,:) = flipSegMap;
+                
+                flipSegMap2 = flipud(segMap);
+                scanData((i-1)*4+3, 1,(padding+currendId), :,:) = flipSegMap2;
+                
+                flipSegMap3 = flipud(flipSegMap);
+                scanData((i-1)*4+4, 1,(padding+currendId), :,:) = flipSegMap3;
                 
                 
             end
